@@ -443,10 +443,53 @@ function logPerformance() {
 // Call performance logging after page load
 $(window).on('load', logPerformance);
 
+// Settings Navigation Functions
+function setupSettingsNavigation() {
+    $('.settings-nav-item').on('click', function(e) {
+        e.preventDefault();
+        
+        const section = $(this).data('section');
+        
+        // Update active navigation
+        $('.settings-nav-item').removeClass('active');
+        $(this).addClass('active');
+        
+        // Show target settings section
+        $('.settings-section').addClass('hidden');
+        $(`#${section}-settings`).removeClass('hidden');
+    });
+}
+
+// Initialize settings navigation when settings page is loaded
+function loadPageData(pageId) {
+    // Simulate loading page-specific data
+    console.log(`Loading data for ${pageId} page`);
+    
+    // In a real app, you would make API calls here
+    switch(pageId) {
+        case 'stock':
+            loadStockData();
+            break;
+        case 'products':
+            loadProductsData();
+            break;
+        case 'orders':
+            loadOrdersData();
+            break;
+        case 'settings':
+            setupSettingsNavigation();
+            break;
+        // Add more cases for other pages
+        default:
+            break;
+    }
+}
+
 // Export functions for global access (if needed)
 window.PharmaConnect = {
     showNotification,
     closeNotification,
     showPage,
-    loadDashboardData
+    loadDashboardData,
+    setupSettingsNavigation
 };
