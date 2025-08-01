@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharma Connect - Management Panel</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white rounded-lg p-8 w-96 shadow-2xl">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Pharma Connect</h2>
+                <p class="text-gray-600">Management Panel Login</p>
+            </div>
+            <form id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Username</label>
+                    <input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter username" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                    <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
+                    Sign In
+                </button>
+            </form>
+            <div class="mt-4 text-sm text-gray-600 text-center">
+                <p>Demo credentials: admin / admin123</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <div id="dashboardContainer" class="min-h-screen" style="display: none;">
+        <!-- Sidebar -->
+        <div class="sidebar fixed left-0 top-0 h-full w-64 bg-gradient-to-b from-slate-800 to-slate-900 text-white transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-40">
+            <div class="p-6 border-b border-slate-700">
+                <h2 class="text-xl font-bold text-blue-400">Pharma Connect</h2>
+                <p class="text-sm text-slate-400">Management Panel</p>
+            </div>
+            
+            <nav class="mt-6">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="stock">
+                    <i class="fas fa-boxes"></i>
+                    <span>Stock</span>
+                </a>
+                <a href="#" class="nav-item" data-page="products">
+                    <i class="fas fa-pills"></i>
+                    <span>Products</span>
+                </a>
+                <a href="#" class="nav-item" data-page="user">
+                    <i class="fas fa-users"></i>
+                    <span>User</span>
+                </a>
+                <a href="#" class="nav-item" data-page="supplier">
+                    <i class="fas fa-truck"></i>
+                    <span>Supplier</span>
+                </a>
+                <a href="#" class="nav-item" data-page="orders">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Orders</span>
+                </a>
+                <a href="#" class="nav-item" data-page="roles">
+                    <i class="fas fa-user-cog"></i>
+                    <span>Roles</span>
+                </a>
+                <a href="#" class="nav-item" data-page="reports">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Reports</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content ml-0 md:ml-64 min-h-screen">
+            <!-- Top Header -->
+            <header class="bg-white shadow-sm border-b border-gray-200 p-4 flex justify-between items-center">
+                <div class="flex items-center">
+                    <button id="sidebarToggle" class="md:hidden text-gray-600 hover:text-gray-800 mr-3">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 id="pageTitle" class="text-2xl font-semibold text-gray-800">Dashboard</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <i class="fas fa-bell text-gray-600 text-lg"></i>
+                        <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-gray-700">Welcome, Admin!</span>
+                        <div class="relative">
+                            <button id="userDropdown" class="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-medium">
+                                AD
+                            </button>
+                            <div id="dropdownMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 hidden">
+                                <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Profile</a>
+                                <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Settings</a>
+                                <hr class="my-1">
+                                <a href="#" id="logoutBtn" class="block px-4 py-2 text-red-600 hover:bg-gray-100">Logout</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="p-6">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page-content">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Dashboard Overview</h2>
+                    
+                    <!-- Stats Cards Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <!-- Total Sales Card -->
+                        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-green-600 mb-2">
+                                        <i class="fas fa-chart-line mr-2"></i>Total Sales
+                                    </h3>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Daily Sales:</span>
+                                            <span class="font-semibold text-green-600">₹5 Cr</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Monthly Sales:</span>
+                                            <span class="font-semibold text-green-600">₹150 Cr</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Yearly Sales:</span>
+                                            <span class="font-semibold text-green-600">₹2500 Cr</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-3">Overview of total sales across periods.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Revenue Overview Card -->
+                        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-orange-600 mb-2">
+                                        <i class="fas fa-dollar-sign mr-2"></i>Revenue Overview
+                                    </h3>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Gross Sales Revenue:</span>
+                                            <span class="font-semibold text-green-600">₹2600 Cr</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Net Sales Revenue:</span>
+                                            <span class="font-semibold text-green-600">₹2500 Cr</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Sales Returns/Discounts:</span>
+                                            <span class="font-semibold text-red-600">₹100 Cr</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-3">Income generated directly from sales.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Expenses Overview Card -->
+                        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-red-600 mb-2">
+                                        <i class="fas fa-credit-card mr-2"></i>Expenses Overview
+                                    </h3>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Total Operational Expenses:</span>
+                                            <span class="font-semibold text-red-600">₹1200 Cr</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">Marketing Expenses (Q1):</span>
+                                            <span class="font-semibold text-red-600">₹150 Cr</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">R&D Expenses (YTD):</span>
+                                            <span class="font-semibold text-red-600">₹400 Cr</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-3">Total operational and business expenses.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Top-Selling Drugs -->
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-purple-600 mb-4">
+                                <i class="fas fa-pills mr-2"></i>Top-Selling Drugs
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <span class="font-medium">1. Drug Alpha:</span>
+                                    <span class="font-semibold text-purple-600">1.2M Units</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <span class="font-medium">2. Drug Beta:</span>
+                                    <span class="font-semibold text-purple-600">950K Units</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <span class="font-medium">3. Drug Gamma:</span>
+                                    <span class="font-semibold text-purple-600">780K Units</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications & Alerts -->
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                                <i class="fas fa-bell mr-2"></i>Notifications & Alerts
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center p-3 bg-orange-50 rounded border-l-4 border-orange-400">
+                                    <span class="text-gray-700">Expiring Soon:</span>
+                                    <span class="font-semibold text-orange-600">15 items</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-red-50 rounded border-l-4 border-red-400">
+                                    <span class="text-gray-700">Low Stock:</span>
+                                    <span class="font-semibold text-red-600">28 items</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-blue-50 rounded border-l-4 border-blue-400">
+                                    <span class="text-gray-700">Pending Orders:</span>
+                                    <span class="font-semibold text-blue-600">7 orders</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Orders -->
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-semibold text-blue-600 mb-4">
+                                <i class="fas fa-shopping-cart mr-2"></i>Recent Orders
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <span class="text-gray-700">Order #2023001:</span>
+                                    <span class="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">Pending</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <span class="text-gray-700">Order #2023002:</span>
+                                    <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">Shipped</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                                    <span class="text-gray-700">Order #2023003:</span>
+                                    <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">Processing</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other Pages (Hidden by default) -->
+                <div id="stock-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Stock Management</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">Stock management interface coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="products-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Products</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">Products management interface coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="user-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">User Management</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">User management interface coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="supplier-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Supplier Management</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">Supplier management interface coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="orders-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Orders Management</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">Orders management interface coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="roles-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Roles & Permissions</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">Roles management interface coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="reports-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Reports</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">Reports interface coming soon...</p>
+                    </div>
+                </div>
+
+                <div id="settings-page" class="page-content hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Settings</h2>
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <p class="text-gray-600">Settings interface coming soon...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JavaScript -->
+    <script src="js/script.js"></script>
+</body>
+</html>
