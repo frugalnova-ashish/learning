@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache Clearer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cache Clearing Tool</h1>
+        <p>Use this tool to clear browser cache and force reload of your application files.</p>
+        
+        <button onclick="clearCache()">Clear Browser Cache</button>
+        <button onclick="hardRefresh()">Hard Refresh</button>
+        <button onclick="clearStorage()">Clear Local Storage</button>
+        <button onclick="goToMain()">Go to Main App</button>
+        
+        <div id="status"></div>
+        
+        <h3>Manual Steps:</h3>
+        <ul>
+            <li><strong>Chrome/Edge:</strong> Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)</li>
+            <li><strong>Firefox:</strong> Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)</li>
+            <li><strong>Safari:</strong> Cmd+Option+R (Mac)</li>
+        </ul>
+        
+        <h3>Developer Tools Method:</h3>
+        <ol>
+            <li>Open Developer Tools (F12)</li>
+            <li>Right-click the refresh button</li>
+            <li>Select "Empty Cache and Hard Reload"</li>
+        </ol>
+    </div>
+
+    <script>
+        function clearCache() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<span class="success">Cache cleared! Now reload the main page.</span>';
+            
+            // Clear localStorage and sessionStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Force reload with cache bypass
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 1000);
+        }
+        
+        function hardRefresh() {
+            window.location.reload(true);
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            document.getElementById('status').innerHTML = '<span class="success">Local and session storage cleared!</span>';
+        }
+        
+        function goToMain() {
+            window.location.href = 'index.html';
+        }
+        
+        // Auto-clear cache on page load
+        window.onload = function() {
+            // Clear any existing cache
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html>

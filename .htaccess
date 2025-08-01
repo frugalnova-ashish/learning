@@ -1,0 +1,29 @@
+# Cache Control for Development
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # CSS and JS files - no caching during development
+    <FilesMatch "\.(css|js)$">
+        ExpiresDefault "access"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+    
+    # HTML files - no caching during development
+    <FilesMatch "\.(html|htm)$">
+        ExpiresDefault "access"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+</IfModule>
+
+# Force browser to reload CSS and JS files
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+</IfModule>
