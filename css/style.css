@@ -328,6 +328,90 @@ input:checked + .slider:before {
     transform: translateX(26px);
 }
 
+/* Search Highlighting */
+.highlight {
+    background-color: #fef08a !important;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-weight: 500;
+}
+
+/* Enhanced Focus States */
+.ring-2 {
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+
+.ring-indigo-500 {
+    --tw-ring-color: rgb(99 102 241 / 0.5);
+}
+
+.ring-opacity-20 {
+    --tw-ring-opacity: 0.2;
+}
+
+/* Bulk Actions Styling */
+#bulkActions {
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Enhanced Table Interactions */
+tbody tr:hover {
+    background-color: #f9fafb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+/* Status Badge Interactions */
+.px-2.inline-flex {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.px-2.inline-flex:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics Card Interactions */
+.border-l-4 {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.border-l-4:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Pulse Animation */
+.animate-pulse {
+    animation: pulse 1s ease-in-out;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
 /* Print Styles */
 @media print {
     .sidebar,
