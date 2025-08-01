@@ -531,29 +531,91 @@ function setupSettingsActions() {
     });
 }
 
+// Data Storage (In real app, this would be API calls)
+let stockData = [
+    {id: 1, name: 'Paracetamol 500mg', sku: 'PAR500', category: 'Tablets', stock: 850, minLevel: 100, expiry: '2025-06-15', status: 'In Stock'},
+    {id: 2, name: 'Amoxicillin 250mg', sku: 'AMX250', category: 'Capsules', stock: 45, minLevel: 50, expiry: '2024-12-30', status: 'Low Stock'},
+    {id: 3, name: 'Cough Syrup 100ml', sku: 'CS100', category: 'Syrups', stock: 0, minLevel: 25, expiry: '2025-03-20', status: 'Out of Stock'}
+];
+
+let userData = [
+    {id: 1, name: 'John Doe', email: 'john.doe@pharmaconnect.com', role: 'Administrator', department: 'IT Department', lastLogin: '2024-01-15 10:30 AM', status: 'Active', empId: 'EMP001'},
+    {id: 2, name: 'Sarah Johnson', email: 'sarah.johnson@pharmaconnect.com', role: 'Inventory Manager', department: 'Operations', lastLogin: '2024-01-15 09:45 AM', status: 'Active', empId: 'EMP002'},
+    {id: 3, name: 'Michael Rodriguez', email: 'michael.rodriguez@pharmaconnect.com', role: 'Supplier Coordinator', department: 'Procurement', lastLogin: '2024-01-14 04:20 PM', status: 'Inactive', empId: 'EMP003'}
+];
+
+let orderData = [
+    {id: 1, orderId: '#ORD-2024-001', customer: 'Apollo Clinic', email: 'apollo@clinic.com', products: 5, total: 12450, status: 'Pending', priority: 'Urgent', date: '2024-01-15'},
+    {id: 2, orderId: '#ORD-2024-002', customer: 'Metro Hospital', email: 'orders@metro.com', products: 12, total: 28950, status: 'Shipped', priority: 'High', date: '2024-01-14'},
+    {id: 3, orderId: '#ORD-2024-003', customer: 'City Medical', email: 'supply@citymed.com', products: 8, total: 18750, status: 'Processing', priority: 'Normal', date: '2024-01-13'}
+];
+
+let rolesData = [
+    {id: 1, name: 'Administrator', description: 'Full access to all system modules', status: 'Active'},
+    {id: 2, name: 'Inventory Manager', description: 'Manages stock and products', status: 'Active'},
+    {id: 3, name: 'Supplier Coordinator', description: 'Handles supplier interactions', status: 'Inactive'},
+    {id: 4, name: 'Order Processor', description: 'Processes and tracks orders', status: 'Active'},
+    {id: 5, name: 'Report Analyst', description: 'Generates and analyzes reports', status: 'Inactive'}
+];
+
+let currentPage = 1;
+let itemsPerPage = 10;
+
+// Modal Functions
+function showModal(title, content, size = 'medium') {
+    const modalSizes = {
+        small: 'max-w-md',
+        medium: 'max-w-2xl',
+        large: 'max-w-4xl',
+        xlarge: 'max-w-6xl'
+    };
+    
+    const modal = `
+        <div id="crudModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg ${modalSizes[size]} w-full mx-4 max-h-screen overflow-y-auto">
+                <div class="flex justify-between items-center p-6 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">${title}</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    ${content}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#modalContainer').html(modal);
+}
+
+function closeModal() {
+    $('#modalContainer').empty();
+}
+
 // Stock Management Functions
 function setupStockManagement() {
+    renderStockTable();
+    
     // Add Stock Button
     $('#addStockBtn').on('click', function() {
-        showNotification('Add Stock functionality would open here', 'info');
+        showAddStockModal();
     });
 
     // Search functionality
     $('#stockSearch').on('input', function() {
         const searchTerm = $(this).val().toLowerCase();
-        filterTable('#stockTableBody', searchTerm);
+        filterStockTable(searchTerm);
     });
 
     // Category filter
     $('#categoryFilter').on('change', function() {
-        const category = $(this).val();
-        filterByCategory('#stockTableBody', category, 'Tablets,Capsules,Syrups');
+        filterStockTable();
     });
 
     // Status filter
     $('#statusFilter').on('change', function() {
-        const status = $(this).val();
-        filterByStatus('#stockTableBody', status);
+        filterStockTable();
     });
 
     // Clear filters
@@ -561,7 +623,7 @@ function setupStockManagement() {
         $('#stockSearch').val('');
         $('#categoryFilter').val('');
         $('#statusFilter').val('');
-        $('#stockTableBody tr').show();
+        renderStockTable();
         showNotification('Filters cleared', 'success');
     });
 
@@ -574,21 +636,255 @@ function setupStockManagement() {
     // Edit buttons
     $('#stockTableBody').on('click', '.fa-edit', function() {
         const row = $(this).closest('tr');
-        const productName = row.find('.text-sm.font-medium').text();
-        showNotification(`Edit ${productName} functionality would open here`, 'info');
+        const itemId = parseInt(row.data('id'));
+        showEditStockModal(itemId);
     });
 
     // Delete buttons
     $('#stockTableBody').on('click', '.fa-trash', function() {
         const row = $(this).closest('tr');
-        const productName = row.find('.text-sm.font-medium').text();
+        const itemId = parseInt(row.data('id'));
+        const productName = stockData.find(item => item.id === itemId)?.name;
+        
         if (confirm(`Are you sure you want to delete ${productName}?`)) {
-            row.fadeOut(300, function() {
-                $(this).remove();
-            });
-            showNotification(`${productName} deleted successfully`, 'success');
+            deleteStockItem(itemId);
         }
     });
+}
+
+function renderStockTable(data = stockData) {
+    const tableBody = $('#stockTableBody');
+    tableBody.empty();
+    
+    data.forEach(item => {
+        const statusClass = item.status === 'In Stock' ? 'bg-green-100 text-green-800' : 
+                           item.status === 'Low Stock' ? 'bg-yellow-100 text-yellow-800' : 
+                           'bg-red-100 text-red-800';
+        
+        const row = `
+            <tr data-id="${item.id}">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <input type="checkbox" class="rounded border-gray-300">
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                            <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <i class="fas fa-pills text-indigo-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${item.name}</div>
+                            <div class="text-sm text-gray-500">SKU: ${item.sku}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.category}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.stock} units</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.minLevel} units</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.expiry}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${item.status}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tableBody.append(row);
+    });
+}
+
+function filterStockTable(searchTerm = '') {
+    if (!searchTerm) {
+        searchTerm = $('#stockSearch').val().toLowerCase();
+    }
+    
+    const category = $('#categoryFilter').val();
+    const status = $('#statusFilter').val();
+    
+    let filteredData = stockData.filter(item => {
+        const matchesSearch = !searchTerm || 
+            item.name.toLowerCase().includes(searchTerm) || 
+            item.sku.toLowerCase().includes(searchTerm);
+        
+        const matchesCategory = !category || item.category.toLowerCase() === category.toLowerCase();
+        
+        const matchesStatus = !status || item.status.toLowerCase().replace(/\s+/g, '-') === status;
+        
+        return matchesSearch && matchesCategory && matchesStatus;
+    });
+    
+    renderStockTable(filteredData);
+}
+
+function showAddStockModal() {
+    const form = `
+        <form id="addStockForm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+                    <input type="text" id="productName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">SKU</label>
+                    <input type="text" id="productSku" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select id="productCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="">Select Category</option>
+                        <option value="Tablets">Tablets</option>
+                        <option value="Capsules">Capsules</option>
+                        <option value="Syrups">Syrups</option>
+                        <option value="Injections">Injections</option>
+                        <option value="Ointments">Ointments</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Stock</label>
+                    <input type="number" id="currentStock" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Minimum Level</label>
+                    <input type="number" id="minLevel" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                    <input type="date" id="expiryDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Stock</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Add New Stock', form);
+    
+    $('#addStockForm').on('submit', function(e) {
+        e.preventDefault();
+        addStockItem();
+    });
+}
+
+function showEditStockModal(itemId) {
+    const item = stockData.find(stock => stock.id === itemId);
+    if (!item) return;
+    
+    const form = `
+        <form id="editStockForm">
+            <input type="hidden" id="editItemId" value="${item.id}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+                    <input type="text" id="editProductName" value="${item.name}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">SKU</label>
+                    <input type="text" id="editProductSku" value="${item.sku}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select id="editProductCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Tablets" ${item.category === 'Tablets' ? 'selected' : ''}>Tablets</option>
+                        <option value="Capsules" ${item.category === 'Capsules' ? 'selected' : ''}>Capsules</option>
+                        <option value="Syrups" ${item.category === 'Syrups' ? 'selected' : ''}>Syrups</option>
+                        <option value="Injections" ${item.category === 'Injections' ? 'selected' : ''}>Injections</option>
+                        <option value="Ointments" ${item.category === 'Ointments' ? 'selected' : ''}>Ointments</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Current Stock</label>
+                    <input type="number" id="editCurrentStock" value="${item.stock}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Minimum Level</label>
+                    <input type="number" id="editMinLevel" value="${item.minLevel}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                    <input type="date" id="editExpiryDate" value="${item.expiry}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Update Stock</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Edit Stock Item', form);
+    
+    $('#editStockForm').on('submit', function(e) {
+        e.preventDefault();
+        updateStockItem();
+    });
+}
+
+function addStockItem() {
+    const newItem = {
+        id: Date.now(),
+        name: $('#productName').val(),
+        sku: $('#productSku').val(),
+        category: $('#productCategory').val(),
+        stock: parseInt($('#currentStock').val()),
+        minLevel: parseInt($('#minLevel').val()),
+        expiry: $('#expiryDate').val(),
+        status: getStockStatus(parseInt($('#currentStock').val()), parseInt($('#minLevel').val()))
+    };
+    
+    stockData.push(newItem);
+    renderStockTable();
+    closeModal();
+    showNotification('Stock item added successfully', 'success');
+}
+
+function updateStockItem() {
+    const itemId = parseInt($('#editItemId').val());
+    const itemIndex = stockData.findIndex(item => item.id === itemId);
+    
+    if (itemIndex !== -1) {
+        const currentStock = parseInt($('#editCurrentStock').val());
+        const minLevel = parseInt($('#editMinLevel').val());
+        
+        stockData[itemIndex] = {
+            ...stockData[itemIndex],
+            name: $('#editProductName').val(),
+            sku: $('#editProductSku').val(),
+            category: $('#editProductCategory').val(),
+            stock: currentStock,
+            minLevel: minLevel,
+            expiry: $('#editExpiryDate').val(),
+            status: getStockStatus(currentStock, minLevel)
+        };
+        
+        renderStockTable();
+        closeModal();
+        showNotification('Stock item updated successfully', 'success');
+    }
+}
+
+function deleteStockItem(itemId) {
+    const itemIndex = stockData.findIndex(item => item.id === itemId);
+    if (itemIndex !== -1) {
+        const productName = stockData[itemIndex].name;
+        stockData.splice(itemIndex, 1);
+        renderStockTable();
+        showNotification(`${productName} deleted successfully`, 'success');
+    }
+}
+
+function getStockStatus(currentStock, minLevel) {
+    if (currentStock === 0) return 'Out of Stock';
+    if (currentStock <= minLevel) return 'Low Stock';
+    return 'In Stock';
 }
 
 // Products Management Functions
@@ -649,15 +945,17 @@ function setupProductsManagement() {
 
 // User Management Functions
 function setupUserManagement() {
+    renderUserTable();
+    
     // Add User Button
     $('#addUserBtn').on('click', function() {
-        showNotification('Add User functionality would open here', 'info');
+        showAddUserModal();
     });
 
     // Search functionality
     $('#userSearch').on('input', function() {
         const searchTerm = $(this).val().toLowerCase();
-        filterTable('#userTableBody', searchTerm);
+        filterUserTable(searchTerm);
     });
 
     // Filter functions
@@ -670,7 +968,7 @@ function setupUserManagement() {
         $('#userSearch').val('');
         $('#roleFilter').val('');
         $('#userStatusFilter').val('');
-        $('#userTableBody tr').show();
+        renderUserTable();
         showNotification('Filters cleared', 'success');
     });
 
@@ -683,26 +981,305 @@ function setupUserManagement() {
     // User actions
     $('#userTableBody').on('click', '.fa-edit', function() {
         const row = $(this).closest('tr');
-        const userName = row.find('.text-sm.font-medium').text();
-        showNotification(`Edit ${userName} functionality would open here`, 'info');
+        const userId = parseInt(row.data('id'));
+        showEditUserModal(userId);
     });
 
     $('#userTableBody').on('click', '.fa-eye', function() {
         const row = $(this).closest('tr');
-        const userName = row.find('.text-sm.font-medium').text();
-        showNotification(`View ${userName} profile would open here`, 'info');
+        const userId = parseInt(row.data('id'));
+        showViewUserModal(userId);
     });
 
     $('#userTableBody').on('click', '.fa-trash', function() {
         const row = $(this).closest('tr');
-        const userName = row.find('.text-sm.font-medium').text();
+        const userId = parseInt(row.data('id'));
+        const userName = userData.find(user => user.id === userId)?.name;
+        
         if (confirm(`Are you sure you want to delete ${userName}?`)) {
-            row.fadeOut(300, function() {
-                $(this).remove();
-            });
-            showNotification(`${userName} deleted successfully`, 'success');
+            deleteUser(userId);
         }
     });
+}
+
+function renderUserTable(data = userData) {
+    const tableBody = $('#userTableBody');
+    tableBody.empty();
+    
+    data.forEach(user => {
+        const statusClass = user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+        const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+        
+        const row = `
+            <tr data-id="${user.id}">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <input type="checkbox" class="rounded border-gray-300">
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10">
+                            <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium">
+                                ${initials}
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${user.name}</div>
+                            <div class="text-sm text-gray-500">Employee ID: ${user.empId}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.email}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.role}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.department}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${user.lastLogin}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${user.status}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="text-blue-600 hover:text-blue-900 mr-3">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tableBody.append(row);
+    });
+}
+
+function filterUserTable(searchTerm = '') {
+    if (!searchTerm) {
+        searchTerm = $('#userSearch').val().toLowerCase();
+    }
+    
+    const role = $('#roleFilter').val();
+    const status = $('#userStatusFilter').val();
+    
+    let filteredData = userData.filter(user => {
+        const matchesSearch = !searchTerm || 
+            user.name.toLowerCase().includes(searchTerm) || 
+            user.email.toLowerCase().includes(searchTerm) ||
+            user.empId.toLowerCase().includes(searchTerm);
+        
+        const matchesRole = !role || user.role.toLowerCase().replace(/\s+/g, '-') === role;
+        const matchesStatus = !status || user.status.toLowerCase() === status;
+        
+        return matchesSearch && matchesRole && matchesStatus;
+    });
+    
+    renderUserTable(filteredData);
+}
+
+function showAddUserModal() {
+    const form = `
+        <form id="addUserForm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="userName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="userEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                    <input type="text" id="userEmpId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select id="userRole" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="">Select Role</option>
+                        <option value="Administrator">Administrator</option>
+                        <option value="Inventory Manager">Inventory Manager</option>
+                        <option value="Supplier Coordinator">Supplier Coordinator</option>
+                        <option value="Order Processor">Order Processor</option>
+                        <option value="Report Analyst">Report Analyst</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <input type="text" id="userDepartment" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="userStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add User</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Add New User', form);
+    
+    $('#addUserForm').on('submit', function(e) {
+        e.preventDefault();
+        addUser();
+    });
+}
+
+function showEditUserModal(userId) {
+    const user = userData.find(u => u.id === userId);
+    if (!user) return;
+    
+    const form = `
+        <form id="editUserForm">
+            <input type="hidden" id="editUserId" value="${user.id}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="editUserName" value="${user.name}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="editUserEmail" value="${user.email}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                    <input type="text" id="editUserEmpId" value="${user.empId}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select id="editUserRole" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Administrator" ${user.role === 'Administrator' ? 'selected' : ''}>Administrator</option>
+                        <option value="Inventory Manager" ${user.role === 'Inventory Manager' ? 'selected' : ''}>Inventory Manager</option>
+                        <option value="Supplier Coordinator" ${user.role === 'Supplier Coordinator' ? 'selected' : ''}>Supplier Coordinator</option>
+                        <option value="Order Processor" ${user.role === 'Order Processor' ? 'selected' : ''}>Order Processor</option>
+                        <option value="Report Analyst" ${user.role === 'Report Analyst' ? 'selected' : ''}>Report Analyst</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                    <input type="text" id="editUserDepartment" value="${user.department}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="editUserStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Active" ${user.status === 'Active' ? 'selected' : ''}>Active</option>
+                        <option value="Inactive" ${user.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Update User</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Edit User', form);
+    
+    $('#editUserForm').on('submit', function(e) {
+        e.preventDefault();
+        updateUser();
+    });
+}
+
+function showViewUserModal(userId) {
+    const user = userData.find(u => u.id === userId);
+    if (!user) return;
+    
+    const content = `
+        <div class="space-y-4">
+            <div class="flex items-center space-x-4">
+                <div class="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xl font-bold">
+                    ${user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">${user.name}</h3>
+                    <p class="text-gray-600">${user.role}</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Email</label>
+                    <p class="text-gray-900">${user.email}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Employee ID</label>
+                    <p class="text-gray-900">${user.empId}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Department</label>
+                    <p class="text-gray-900">${user.department}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Last Login</label>
+                    <p class="text-gray-900">${user.lastLogin}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Status</label>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${user.status}</span>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Close</button>
+                <button onclick="closeModal(); showEditUserModal(${user.id})" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Edit User</button>
+            </div>
+        </div>
+    `;
+    
+    showModal('User Details', content);
+}
+
+function addUser() {
+    const newUser = {
+        id: Date.now(),
+        name: $('#userName').val(),
+        email: $('#userEmail').val(),
+        empId: $('#userEmpId').val(),
+        role: $('#userRole').val(),
+        department: $('#userDepartment').val(),
+        status: $('#userStatus').val(),
+        lastLogin: 'Never'
+    };
+    
+    userData.push(newUser);
+    renderUserTable();
+    closeModal();
+    showNotification('User added successfully', 'success');
+}
+
+function updateUser() {
+    const userId = parseInt($('#editUserId').val());
+    const userIndex = userData.findIndex(user => user.id === userId);
+    
+    if (userIndex !== -1) {
+        userData[userIndex] = {
+            ...userData[userIndex],
+            name: $('#editUserName').val(),
+            email: $('#editUserEmail').val(),
+            empId: $('#editUserEmpId').val(),
+            role: $('#editUserRole').val(),
+            department: $('#editUserDepartment').val(),
+            status: $('#editUserStatus').val()
+        };
+        
+        renderUserTable();
+        closeModal();
+        showNotification('User updated successfully', 'success');
+    }
+}
+
+function deleteUser(userId) {
+    const userIndex = userData.findIndex(user => user.id === userId);
+    if (userIndex !== -1) {
+        const userName = userData[userIndex].name;
+        userData.splice(userIndex, 1);
+        renderUserTable();
+        showNotification(`${userName} deleted successfully`, 'success');
+    }
 }
 
 // Supplier Management Functions
@@ -728,15 +1305,17 @@ function setupSupplierManagement() {
 
 // Orders Management Functions
 function setupOrdersManagement() {
+    renderOrderTable();
+    
     // Add Order Button
     $('#addOrderBtn').on('click', function() {
-        showNotification('Create New Order functionality would open here', 'info');
+        showAddOrderModal();
     });
 
     // Search functionality
     $('#orderSearch').on('input', function() {
         const searchTerm = $(this).val().toLowerCase();
-        filterTable('#orderTableBody', searchTerm);
+        filterOrderTable(searchTerm);
     });
 
     // Filter functions
@@ -750,7 +1329,7 @@ function setupOrdersManagement() {
         $('#orderStatusFilter').val('');
         $('#priorityFilter').val('');
         $('#dateRangeFilter').val('');
-        $('#orderTableBody tr').show();
+        renderOrderTable();
         showNotification('Filters cleared', 'success');
     });
 
@@ -763,36 +1342,414 @@ function setupOrdersManagement() {
     // Order actions
     $('#orderTableBody').on('click', '.fa-eye', function() {
         const row = $(this).closest('tr');
-        const orderID = row.find('.text-indigo-600').text();
-        showNotification(`View ${orderID} details would open here`, 'info');
+        const orderId = parseInt(row.data('id'));
+        showViewOrderModal(orderId);
     });
 
     $('#orderTableBody').on('click', '.fa-edit', function() {
         const row = $(this).closest('tr');
-        const orderID = row.find('.text-indigo-600').text();
-        showNotification(`Edit ${orderID} functionality would open here`, 'info');
+        const orderId = parseInt(row.data('id'));
+        showEditOrderModal(orderId);
     });
 
     $('#orderTableBody').on('click', '.fa-check', function() {
         const row = $(this).closest('tr');
-        const orderID = row.find('.text-indigo-600').text();
-        const statusBadge = row.find('.px-2.inline-flex');
-        statusBadge.removeClass('bg-orange-100 text-orange-800').addClass('bg-green-100 text-green-800').text('Completed');
-        showNotification(`${orderID} marked as completed`, 'success');
+        const orderId = parseInt(row.data('id'));
+        approveOrder(orderId);
     });
 
     $('#orderTableBody').on('click', '.fa-truck', function() {
         const row = $(this).closest('tr');
-        const orderID = row.find('.text-indigo-600').text();
-        showNotification(`Track ${orderID} shipping would open here`, 'info');
+        const orderId = parseInt(row.data('id'));
+        trackOrder(orderId);
     });
+}
+
+function renderOrderTable(data = orderData) {
+    const tableBody = $('#orderTableBody');
+    tableBody.empty();
+    
+    data.forEach(order => {
+        const statusClasses = {
+            'Pending': 'bg-orange-100 text-orange-800',
+            'Shipped': 'bg-green-100 text-green-800',
+            'Processing': 'bg-blue-100 text-blue-800',
+            'Delivered': 'bg-green-100 text-green-800',
+            'Cancelled': 'bg-red-100 text-red-800'
+        };
+        
+        const priorityClasses = {
+            'Urgent': 'bg-red-100 text-red-800',
+            'High': 'bg-yellow-100 text-yellow-800',
+            'Normal': 'bg-gray-100 text-gray-800',
+            'Low': 'bg-blue-100 text-blue-800'
+        };
+        
+        const customerInitials = order.customer.split(' ').map(n => n[0]).join('').toUpperCase();
+        
+        const row = `
+            <tr data-id="${order.id}">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <input type="checkbox" class="rounded border-gray-300">
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-indigo-600">${order.orderId}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-8 w-8">
+                            <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <span class="text-xs font-medium text-blue-600">${customerInitials}</span>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">${order.customer}</div>
+                            <div class="text-sm text-gray-500">${order.email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${order.products} items</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">₹${order.total.toLocaleString()}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[order.status]}">${order.status}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${priorityClasses[order.priority]}">${order.priority}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${order.date}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="text-blue-600 hover:text-blue-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    ${order.status === 'Pending' ? '<button class="text-green-600 hover:text-green-900 mr-3"><i class="fas fa-check"></i></button>' : ''}
+                    ${order.status === 'Shipped' ? '<button class="text-purple-600 hover:text-purple-900"><i class="fas fa-truck"></i></button>' : ''}
+                </td>
+            </tr>
+        `;
+        tableBody.append(row);
+    });
+}
+
+function filterOrderTable(searchTerm = '') {
+    if (!searchTerm) {
+        searchTerm = $('#orderSearch').val().toLowerCase();
+    }
+    
+    const status = $('#orderStatusFilter').val();
+    const priority = $('#priorityFilter').val();
+    const dateRange = $('#dateRangeFilter').val();
+    
+    let filteredData = orderData.filter(order => {
+        const matchesSearch = !searchTerm || 
+            order.orderId.toLowerCase().includes(searchTerm) || 
+            order.customer.toLowerCase().includes(searchTerm) ||
+            order.email.toLowerCase().includes(searchTerm);
+        
+                 const matchesStatus = !status || order.status.toLowerCase() === status;
+         const matchesPriority = !priority || order.priority.toLowerCase() === priority;
+        
+        // Simple date filtering for demo
+        let matchesDate = true;
+        if (dateRange) {
+            const orderDate = new Date(order.date);
+            const today = new Date();
+            
+            switch(dateRange) {
+                case 'today':
+                    matchesDate = orderDate.toDateString() === today.toDateString();
+                    break;
+                case 'week':
+                    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    matchesDate = orderDate >= weekAgo;
+                    break;
+                case 'month':
+                    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    matchesDate = orderDate >= monthAgo;
+                    break;
+            }
+        }
+        
+        return matchesSearch && matchesStatus && matchesPriority && matchesDate;
+    });
+    
+    renderOrderTable(filteredData);
+}
+
+function showAddOrderModal() {
+    const form = `
+        <form id="addOrderForm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
+                    <input type="text" id="orderCustomer" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Customer Email</label>
+                    <input type="email" id="orderEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Number of Products</label>
+                    <input type="number" id="orderProducts" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Total Amount</label>
+                    <input type="number" id="orderTotal" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                    <select id="orderPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Normal">Normal</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="orderStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create Order</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Create New Order', form);
+    
+    $('#addOrderForm').on('submit', function(e) {
+        e.preventDefault();
+        addOrder();
+    });
+}
+
+function showViewOrderModal(orderId) {
+    const order = orderData.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const content = `
+        <div class="space-y-4">
+            <div class="border-b pb-4">
+                <h3 class="text-xl font-bold text-gray-900">${order.orderId}</h3>
+                <p class="text-gray-600">Order Details</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Customer</label>
+                    <p class="text-gray-900">${order.customer}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Email</label>
+                    <p class="text-gray-900">${order.email}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Products</label>
+                    <p class="text-gray-900">${order.products} items</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Total Amount</label>
+                    <p class="text-gray-900 font-semibold">₹${order.total.toLocaleString()}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Status</label>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">${order.status}</span>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Priority</label>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">${order.priority}</span>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-500">Order Date</label>
+                    <p class="text-gray-900">${order.date}</p>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Close</button>
+                <button onclick="closeModal(); showEditOrderModal(${order.id})" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Edit Order</button>
+            </div>
+        </div>
+    `;
+    
+    showModal('Order Details', content);
+}
+
+function showEditOrderModal(orderId) {
+    const order = orderData.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const form = `
+        <form id="editOrderForm">
+            <input type="hidden" id="editOrderId" value="${order.id}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
+                    <input type="text" id="editOrderCustomer" value="${order.customer}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Customer Email</label>
+                    <input type="email" id="editOrderEmail" value="${order.email}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Number of Products</label>
+                    <input type="number" id="editOrderProducts" value="${order.products}" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Total Amount</label>
+                    <input type="number" id="editOrderTotal" value="${order.total}" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                    <select id="editOrderPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Normal" ${order.priority === 'Normal' ? 'selected' : ''}>Normal</option>
+                        <option value="High" ${order.priority === 'High' ? 'selected' : ''}>High</option>
+                        <option value="Urgent" ${order.priority === 'Urgent' ? 'selected' : ''}>Urgent</option>
+                        <option value="Low" ${order.priority === 'Low' ? 'selected' : ''}>Low</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="editOrderStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                        <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                        <option value="Shipped" ${order.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                        <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                        <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Update Order</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Edit Order', form);
+    
+    $('#editOrderForm').on('submit', function(e) {
+        e.preventDefault();
+        updateOrder();
+    });
+}
+
+function addOrder() {
+    const newOrder = {
+        id: Date.now(),
+        orderId: `#ORD-2024-${String(orderData.length + 1).padStart(3, '0')}`,
+        customer: $('#orderCustomer').val(),
+        email: $('#orderEmail').val(),
+        products: parseInt($('#orderProducts').val()),
+        total: parseFloat($('#orderTotal').val()),
+        status: $('#orderStatus').val(),
+        priority: $('#orderPriority').val(),
+        date: new Date().toISOString().split('T')[0]
+    };
+    
+    orderData.push(newOrder);
+    renderOrderTable();
+    closeModal();
+    showNotification('Order created successfully', 'success');
+}
+
+function updateOrder() {
+    const orderId = parseInt($('#editOrderId').val());
+    const orderIndex = orderData.findIndex(order => order.id === orderId);
+    
+    if (orderIndex !== -1) {
+        orderData[orderIndex] = {
+            ...orderData[orderIndex],
+            customer: $('#editOrderCustomer').val(),
+            email: $('#editOrderEmail').val(),
+            products: parseInt($('#editOrderProducts').val()),
+            total: parseFloat($('#editOrderTotal').val()),
+            status: $('#editOrderStatus').val(),
+            priority: $('#editOrderPriority').val()
+        };
+        
+        renderOrderTable();
+        closeModal();
+        showNotification('Order updated successfully', 'success');
+    }
+}
+
+function approveOrder(orderId) {
+    const orderIndex = orderData.findIndex(order => order.id === orderId);
+    if (orderIndex !== -1) {
+        orderData[orderIndex].status = 'Processing';
+        renderOrderTable();
+        showNotification(`Order ${orderData[orderIndex].orderId} approved and moved to processing`, 'success');
+    }
+}
+
+function trackOrder(orderId) {
+    const order = orderData.find(o => o.id === orderId);
+    if (!order) return;
+    
+    const trackingInfo = `
+        <div class="space-y-4">
+            <div class="border-b pb-4">
+                <h3 class="text-xl font-bold text-gray-900">Order Tracking</h3>
+                <p class="text-gray-600">${order.orderId}</p>
+            </div>
+            <div class="space-y-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div>
+                        <p class="font-medium text-gray-900">Order Confirmed</p>
+                        <p class="text-sm text-gray-500">${order.date} 10:00 AM</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div>
+                        <p class="font-medium text-gray-900">Processing</p>
+                        <p class="text-sm text-gray-500">${order.date} 11:30 AM</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div>
+                        <p class="font-medium text-gray-900">Shipped</p>
+                        <p class="text-sm text-gray-500">${order.date} 2:15 PM</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <div>
+                        <p class="font-medium text-gray-900">Out for Delivery</p>
+                        <p class="text-sm text-gray-500">Expected today by 6:00 PM</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <p class="text-sm text-blue-800"><strong>Tracking Number:</strong> TRK${order.id}${Date.now().toString().slice(-4)}</p>
+                <p class="text-sm text-blue-800"><strong>Carrier:</strong> FastDelivery Express</p>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Close</button>
+            </div>
+        </div>
+    `;
+    
+    showModal('Order Tracking', trackingInfo);
 }
 
 // Roles Management Functions
 function setupRolesManagement() {
+    renderRolesTable();
+    
     // Add Role Button
     $('#addRoleBtn').on('click', function() {
-        showNotification('Add New Role functionality would open here', 'info');
+        showAddRoleModal();
     });
 
     // Search functionality
@@ -802,22 +1759,180 @@ function setupRolesManagement() {
     });
 
     // Role actions
-    $('.bg-white.divide-y').on('click', '.fa-edit', function() {
+    $('tbody').on('click', '.fa-edit', function() {
         const row = $(this).closest('tr');
-        const roleName = row.find('.text-sm.font-medium').text();
-        showNotification(`Edit ${roleName} role functionality would open here`, 'info');
+        const roleId = parseInt(row.data('id'));
+        showEditRoleModal(roleId);
     });
 
-    $('.bg-white.divide-y').on('click', '.fa-trash', function() {
+    $('tbody').on('click', '.fa-trash', function() {
         const row = $(this).closest('tr');
-        const roleName = row.find('.text-sm.font-medium').text();
+        const roleId = parseInt(row.data('id'));
+        const roleName = rolesData.find(role => role.id === roleId)?.name;
+        
         if (confirm(`Are you sure you want to delete ${roleName} role?`)) {
-            row.fadeOut(300, function() {
-                $(this).remove();
-            });
-            showNotification(`${roleName} role deleted successfully`, 'success');
+            deleteRole(roleId);
         }
     });
+}
+
+function renderRolesTable(data = rolesData) {
+    const tableBody = $('tbody');
+    if (tableBody.length === 0) return;
+    
+    tableBody.empty();
+    
+    data.forEach(role => {
+        const statusClass = role.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+        
+        const row = `
+            <tr data-id="${role.id}">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${role.name}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">${role.description}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${role.status}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="text-red-600 hover:text-red-900">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tableBody.append(row);
+    });
+}
+
+function filterRolesTable(searchTerm) {
+    const filteredData = rolesData.filter(role => {
+        return role.name.toLowerCase().includes(searchTerm) || 
+               role.description.toLowerCase().includes(searchTerm);
+    });
+    
+    renderRolesTable(filteredData);
+}
+
+function showAddRoleModal() {
+    const form = `
+        <form id="addRoleForm">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role Name</label>
+                    <input type="text" id="roleName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="roleDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="roleStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Role</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Add New Role', form);
+    
+    $('#addRoleForm').on('submit', function(e) {
+        e.preventDefault();
+        addRole();
+    });
+}
+
+function showEditRoleModal(roleId) {
+    const role = rolesData.find(r => r.id === roleId);
+    if (!role) return;
+    
+    const form = `
+        <form id="editRoleForm">
+            <input type="hidden" id="editRoleId" value="${role.id}">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role Name</label>
+                    <input type="text" id="editRoleName" value="${role.name}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="editRoleDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>${role.description}</textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select id="editRoleStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" required>
+                        <option value="Active" ${role.status === 'Active' ? 'selected' : ''}>Active</option>
+                        <option value="Inactive" ${role.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Update Role</button>
+            </div>
+        </form>
+    `;
+    
+    showModal('Edit Role', form);
+    
+    $('#editRoleForm').on('submit', function(e) {
+        e.preventDefault();
+        updateRole();
+    });
+}
+
+function addRole() {
+    const newRole = {
+        id: Date.now(),
+        name: $('#roleName').val(),
+        description: $('#roleDescription').val(),
+        status: $('#roleStatus').val()
+    };
+    
+    rolesData.push(newRole);
+    renderRolesTable();
+    closeModal();
+    showNotification('Role added successfully', 'success');
+}
+
+function updateRole() {
+    const roleId = parseInt($('#editRoleId').val());
+    const roleIndex = rolesData.findIndex(role => role.id === roleId);
+    
+    if (roleIndex !== -1) {
+        rolesData[roleIndex] = {
+            ...rolesData[roleIndex],
+            name: $('#editRoleName').val(),
+            description: $('#editRoleDescription').val(),
+            status: $('#editRoleStatus').val()
+        };
+        
+        renderRolesTable();
+        closeModal();
+        showNotification('Role updated successfully', 'success');
+    }
+}
+
+function deleteRole(roleId) {
+    const roleIndex = rolesData.findIndex(role => role.id === roleId);
+    if (roleIndex !== -1) {
+        const roleName = rolesData[roleIndex].name;
+        rolesData.splice(roleIndex, 1);
+        renderRolesTable();
+        showNotification(`${roleName} role deleted successfully`, 'success');
+    }
 }
 
 // Reports Management Functions
@@ -1041,49 +2156,395 @@ function filterRolesTable(searchTerm) {
     });
 }
 
-// Pagination Functions
+// Real Pagination Functions
 function setupPagination() {
     $('.relative.z-0.inline-flex').on('click', 'button', function(e) {
         e.preventDefault();
         
-        // Remove active state from all buttons
-        $(this).siblings().removeClass('bg-indigo-50 border-indigo-500 text-indigo-600')
-               .addClass('bg-white border-gray-300 text-gray-500');
+        const currentPageElement = $('.bg-indigo-50.border-indigo-500');
+        let newPage = currentPage;
         
-        // Add active state to clicked button (if it's a number)
-        if ($(this).text().trim().match(/^\d+$/)) {
-            $(this).removeClass('bg-white border-gray-300 text-gray-500')
-                   .addClass('bg-indigo-50 border-indigo-500 text-indigo-600');
+        if ($(this).find('i').hasClass('fa-chevron-left')) {
+            // Previous page
+            if (currentPage > 1) {
+                newPage = currentPage - 1;
+            }
+        } else if ($(this).find('i').hasClass('fa-chevron-right')) {
+            // Next page
+            const maxPage = Math.ceil(getCurrentDataLength() / itemsPerPage);
+            if (currentPage < maxPage) {
+                newPage = currentPage + 1;
+            }
+        } else if ($(this).text().trim().match(/^\d+$/)) {
+            // Specific page number
+            newPage = parseInt($(this).text().trim());
+        }
+        
+        if (newPage !== currentPage) {
+            currentPage = newPage;
+            updatePagination();
             
-            showNotification(`Loading page ${$(this).text()}...`, 'info', 1500);
-        } else {
-            const direction = $(this).find('i').hasClass('fa-chevron-left') ? 'previous' : 'next';
-            showNotification(`Loading ${direction} page...`, 'info', 1500);
+            // Re-render the current page with pagination
+            const currentPageData = getCurrentPageData();
+            renderCurrentPageTable(currentPageData);
+            
+            showNotification(`Loading page ${currentPage}...`, 'info', 1000);
         }
     });
 }
 
-// Export/Download Functions
+function getCurrentDataLength() {
+    const currentPageId = $('.nav-item.active').find('span').text().toLowerCase();
+    switch(currentPageId) {
+        case 'stock management': return stockData.length;
+        case 'user management': return userData.length;
+        case 'orders management': return orderData.length;
+        case 'roles management': return rolesData.length;
+        default: return 10;
+    }
+}
+
+function getCurrentPageData() {
+    const currentPageId = $('.nav-item.active').find('span').text().toLowerCase();
+    let fullData = [];
+    
+    switch(currentPageId) {
+        case 'stock management': fullData = stockData; break;
+        case 'user management': fullData = userData; break;
+        case 'orders management': fullData = orderData; break;
+        case 'roles management': fullData = rolesData; break;
+        default: return [];
+    }
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return fullData.slice(startIndex, endIndex);
+}
+
+function renderCurrentPageTable(data) {
+    const currentPageId = $('.nav-item.active').find('span').text().toLowerCase();
+    
+    switch(currentPageId) {
+        case 'stock management': renderStockTable(data); break;
+        case 'user management': renderUserTable(data); break;
+        case 'orders management': renderOrderTable(data); break;
+        case 'roles management': renderRolesTable(data); break;
+    }
+}
+
+function updatePagination() {
+    const totalItems = getCurrentDataLength();
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    
+    const paginationContainer = $('.relative.z-0.inline-flex');
+    if (paginationContainer.length === 0) return;
+    
+    paginationContainer.empty();
+    
+    // Previous button
+    const prevDisabled = currentPage === 1 ? 'opacity-50 cursor-not-allowed' : '';
+    paginationContainer.append(`
+        <button class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${prevDisabled}">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+    `);
+    
+    // Page numbers
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        const activeClass = isActive ? 'bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50';
+        
+        paginationContainer.append(`
+            <button class="relative inline-flex items-center px-4 py-2 border text-sm font-medium ${activeClass}">
+                ${i}
+            </button>
+        `);
+    }
+    
+    // Next button
+    const nextDisabled = currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : '';
+    paginationContainer.append(`
+        <button class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${nextDisabled}">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    `);
+    
+    // Update pagination info
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+    
+    const paginationInfo = $('.text-sm.text-gray-700');
+    if (paginationInfo.length > 0) {
+        paginationInfo.text(`Showing ${startItem} to ${endItem} of ${totalItems} results`);
+    }
+}
+
+// Real Export/Download Functions
 function setupExportFunctions() {
     // Export buttons
-    $('button:contains("Export"), .fa-download').parent().on('click', function(e) {
+    $('button:contains("Export"), .fa-download').on('click', function(e) {
         e.preventDefault();
-        const currentPage = $('.nav-item.active span').text();
-        showNotification(`Exporting ${currentPage} data...`, 'info');
-        
-        setTimeout(() => {
-            showNotification(`${currentPage} data exported successfully`, 'success');
-        }, 2000);
+        const currentPageId = $('.nav-item.active').find('span').text().toLowerCase();
+        exportToCSV(currentPageId);
     });
     
     // Print buttons
-    $('button:contains("Print"), .fa-print').parent().on('click', function(e) {
+    $('button:contains("Print"), .fa-print').on('click', function(e) {
         e.preventDefault();
-        showNotification('Opening print dialog...', 'info');
-        setTimeout(() => {
-            window.print();
-        }, 500);
+        printCurrentPage();
     });
+}
+
+function exportToCSV(pageType) {
+    let data = [];
+    let filename = '';
+    
+    switch(pageType) {
+        case 'stock management':
+            data = stockData;
+            filename = 'stock_data.csv';
+            break;
+        case 'user management':
+            data = userData;
+            filename = 'user_data.csv';
+            break;
+        case 'orders management':
+            data = orderData;
+            filename = 'orders_data.csv';
+            break;
+        case 'roles management':
+            data = rolesData;
+            filename = 'roles_data.csv';
+            break;
+        default:
+            showNotification('No data to export', 'warning');
+            return;
+    }
+    
+    if (data.length === 0) {
+        showNotification('No data to export', 'warning');
+        return;
+    }
+    
+    showNotification('Preparing export...', 'info');
+    
+    // Convert to CSV
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => headers.map(key => {
+            const value = row[key];
+            // Wrap in quotes if contains comma, quote, or newline
+            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+        }).join(','))
+    ].join('\n');
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => {
+        showNotification(`${filename} downloaded successfully`, 'success');
+    }, 1000);
+}
+
+function exportToJSON(pageType) {
+    let data = [];
+    let filename = '';
+    
+    switch(pageType) {
+        case 'stock management':
+            data = stockData;
+            filename = 'stock_data.json';
+            break;
+        case 'user management':
+            data = userData;
+            filename = 'user_data.json';
+            break;
+        case 'orders management':
+            data = orderData;
+            filename = 'orders_data.json';
+            break;
+        case 'roles management':
+            data = rolesData;
+            filename = 'roles_data.json';
+            break;
+    }
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification(`${filename} downloaded successfully`, 'success');
+}
+
+function printCurrentPage() {
+    const currentPageTitle = $('.nav-item.active span').text();
+    const printWindow = window.open('', '_blank');
+    
+    let tableContent = '';
+    const currentPageId = $('.nav-item.active').find('span').text().toLowerCase();
+    
+    switch(currentPageId) {
+        case 'stock management':
+            tableContent = generateStockPrintContent();
+            break;
+        case 'user management':
+            tableContent = generateUserPrintContent();
+            break;
+        case 'orders management':
+            tableContent = generateOrderPrintContent();
+            break;
+        case 'roles management':
+            tableContent = generateRolesPrintContent();
+            break;
+    }
+    
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${currentPageTitle} - Pharma Connect</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f8f9fa; font-weight: bold; }
+                .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+                .logo { font-size: 24px; font-weight: bold; color: #4f46e5; }
+                .date { color: #6b7280; }
+                @media print {
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="logo">Pharma Connect</div>
+                <div class="date">Generated on: ${new Date().toLocaleDateString()}</div>
+            </div>
+            <h1>${currentPageTitle}</h1>
+            ${tableContent}
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 500);
+    
+    showNotification('Print dialog opened', 'info');
+}
+
+function generateStockPrintContent() {
+    let content = '<table><thead><tr><th>Product Name</th><th>SKU</th><th>Category</th><th>Stock</th><th>Min Level</th><th>Expiry</th><th>Status</th></tr></thead><tbody>';
+    
+    stockData.forEach(item => {
+        content += `
+            <tr>
+                <td>${item.name}</td>
+                <td>${item.sku}</td>
+                <td>${item.category}</td>
+                <td>${item.stock}</td>
+                <td>${item.minLevel}</td>
+                <td>${item.expiry}</td>
+                <td>${item.status}</td>
+            </tr>
+        `;
+    });
+    
+    content += '</tbody></table>';
+    return content;
+}
+
+function generateUserPrintContent() {
+    let content = '<table><thead><tr><th>Name</th><th>Email</th><th>Employee ID</th><th>Role</th><th>Department</th><th>Status</th></tr></thead><tbody>';
+    
+    userData.forEach(user => {
+        content += `
+            <tr>
+                <td>${user.name}</td>
+                <td>${user.email}</td>
+                <td>${user.empId}</td>
+                <td>${user.role}</td>
+                <td>${user.department}</td>
+                <td>${user.status}</td>
+            </tr>
+        `;
+    });
+    
+    content += '</tbody></table>';
+    return content;
+}
+
+function generateOrderPrintContent() {
+    let content = '<table><thead><tr><th>Order ID</th><th>Customer</th><th>Email</th><th>Products</th><th>Total</th><th>Status</th><th>Priority</th><th>Date</th></tr></thead><tbody>';
+    
+    orderData.forEach(order => {
+        content += `
+            <tr>
+                <td>${order.orderId}</td>
+                <td>${order.customer}</td>
+                <td>${order.email}</td>
+                <td>${order.products}</td>
+                <td>₹${order.total.toLocaleString()}</td>
+                <td>${order.status}</td>
+                <td>${order.priority}</td>
+                <td>${order.date}</td>
+            </tr>
+        `;
+    });
+    
+    content += '</tbody></table>';
+    return content;
+}
+
+function generateRolesPrintContent() {
+    let content = '<table><thead><tr><th>Role Name</th><th>Description</th><th>Status</th></tr></thead><tbody>';
+    
+    rolesData.forEach(role => {
+        content += `
+            <tr>
+                <td>${role.name}</td>
+                <td>${role.description}</td>
+                <td>${role.status}</td>
+            </tr>
+        `;
+    });
+    
+    content += '</tbody></table>';
+    return content;
 }
 
 // Additional Interactive Features
